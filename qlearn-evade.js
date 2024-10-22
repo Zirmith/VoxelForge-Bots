@@ -11,19 +11,20 @@ const alpha = 0.1;   // Learning rate
 const gamma = 0.9;   // Discount factor
 const epsilon = 0.2; // Exploration rate (random actions)
 
+// Cooldown settings to prevent spamming
+let actionCooldown = false;
+const cooldownTime = 2000; // 2 seconds
+
 // Helper function to choose random action
 const getRandomAction = () => actions[Math.floor(Math.random() * actions.length)];
 
 // Q-Learning decision function
 const chooseAction = (state) => {
-  if (Math.random() < epsilon) {
+  if (Math.random() < epsilon || !Q[state]) {
     return getRandomAction(); // Exploration: pick random action
   }
-  if (Q[state]) {
-    return Object.keys(Q[state]).reduce((a, b) => (Q[state][a] > Q[state][b] ? a : b)); // Best learned action
-  } else {
-    return getRandomAction(); // Default to random if no knowledge
-  }
+  // Choose the best learned action from the Q-table
+  return Object.keys(Q[state]).reduce((a, b) => (Q[state][a] > Q[state][b] ? a : b));
 };
 
 // Update Q-table
@@ -39,7 +40,7 @@ const updateQ = (state, action, reward, nextState) => {
 const getState = (bot) => {
   const pos = bot.entity.position;
   const health = bot.health;
-  const attacker = bot.nearestEntity((entity) => entity.type === 'mob' || entity.type === 'player' && entity.position.distanceTo(bot.entity.position) < 5);
+  const attacker = bot.nearestEntity((entity) => (entity.type === 'mob' || entity.type === 'player') && entity.position.distanceTo(bot.entity.position) < 5);
 
   let attackerType = attacker ? attacker.name : 'none';
   return `health:${Math.floor(health)}_attacker:${attackerType}_distance:${attacker ? attacker.position.distanceTo(pos) : 'none'}`;
@@ -58,6 +59,9 @@ module.exports = (bot) => {
 
   // Function to perform the chosen action
   const performAction = (action, attacker) => {
+    if (actionCooldown) return; // Prevent spamming actions
+    actionCooldown = true; // Set cooldown
+
     switch (action) {
       case 'dodge_left':
         bot.setControlState('left', true);
@@ -90,6 +94,9 @@ module.exports = (bot) => {
         }
         break;
     }
+
+    // Reset cooldown after specified time
+    setTimeout(() => { actionCooldown = false; }, cooldownTime);
   };
 
   // On every game tick, decide what to do
@@ -97,10 +104,11 @@ module.exports = (bot) => {
     const currentState = getState(bot);
     const currentAction = chooseAction(currentState);
 
-    const attacker = bot.nearestEntity((entity) => entity.type === 'mob' || entity.type === 'player' && entity.position.distanceTo(bot.entity.position) < 5);
+    const attacker = bot.nearestEntity((entity) => (entity.type === 'mob' || entity.type === 'player') && entity.position.distanceTo(bot.entity.position) < 5);
 
-    // Perform chosen action based on current state
-    performAction(currentAction, attacker);
+    if (attacker) {
+      performAction(currentAction, attacker);
+    }
 
     // Evaluate action's success (e.g., was bot hit or did it evade?)
     let currentReward = reward.evade_success;
@@ -134,7 +142,7 @@ module.exports = (bot) => {
   // On bot spawn, initialize the bot and its health tracking
   bot.on('spawn', () => {
     bot.previousHealth = bot.health;
-    bot.chat('Evasion bot loaded. I will dodge and counter-attack!');
+    bot.chat('Evasion and counter-strike bot loaded. Let’s fight smartly!');
   });
 
   // Save the Q-table periodically
