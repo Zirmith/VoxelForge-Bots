@@ -9,7 +9,7 @@ module.exports = (bot) => {
     }
 
     // Teleport command: /tp <x> <y> <z>
-    if (message.startsWith('/tp')) {
+    if (message.startsWith(',tp')) {
       const args = message.split(' ');
       if (args.length === 4) {
         const x = parseFloat(args[1]);
@@ -28,13 +28,13 @@ module.exports = (bot) => {
     }
 
     // List online players
-    if (message === '/players') {
+    if (message === ',players') {
       const players = Object.keys(bot.players).join(', ');
       bot.chat(`Online players: ${players}`);
     }
 
     // Fun command: /dance
-    if (message === '/dance') {
+    if (message === ',dance') {
       bot.chat('Let’s dance! 💃');
       // You can add a small animation here, or just a fun response.
       bot.setControlState('jump', true);
